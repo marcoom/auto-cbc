@@ -1,0 +1,15 @@
+AutoCBC — Automated Blood Cell Counting using AI
+Copyright (C) 2025 Marco Mongi
+
+This product includes components licensed as follows:
+
+- Ultralytics YOLO — Licensed under AGPL-3.0. Copyright (C) Ultralytics.
+  https://github.com/ultralytics/ultralytics
+
+- Segment Anything Model 2 (SAM 2) — Licensed under Apache License 2.0.
+  Copyright (C) Meta Platforms, Inc.
+  See THIRD_PARTY_LICENSES/LICENSE_SAM2.txt
+
+- cctorch (part of SAM 2) — Licensed under BSD 3-Clause.
+  See THIRD_PARTY_LICENSES/LICENSE_cctorch.txt
+
