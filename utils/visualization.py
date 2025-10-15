@@ -27,7 +27,7 @@ def _resize_mask_bool(mask_bool, target_hw):
     if mask_bool.shape == (h, w):
         return mask_bool
     m = (mask_bool.astype(np.uint8) * 255)
-    m_resized = Image.fromarray(m).resize((w, h), resample=Image.NEAREST)
+    m_resized = Image.fromarray(m).resize((w, h), resample=Image.Resampling.NEAREST)
     return (np.array(m_resized) > 127)
 
 
@@ -52,16 +52,18 @@ def _make_border(mask_bool, width_px):
 
 def build_class_masks(detection, segmentation, img_shape_hw):
     """
-    Build separate masks for each cell type from detection and segmentation results.
-    
+    Build individual masks for each detected cell from detection and segmentation results.
+
     Args:
         detection: YOLO detection results.
         segmentation: SAM segmentation results.
         img_shape_hw (tuple): Target image shape (height, width).
-        
+
     Returns:
-        tuple: (rbc_mask, wbc_mask, pl_mask, bg_mask) as boolean numpy arrays.
-        
+        tuple: (individual_cells, bg_mask) where:
+            - individual_cells: list of (mask, class_name) tuples, one per cell
+            - bg_mask: boolean numpy array for background pixels
+
     Raises:
         ValueError: If expected cell types not found in detection results.
     """
@@ -87,30 +89,28 @@ def build_class_masks(detection, segmentation, img_shape_hw):
             "Adjust _find_class_id if your model uses different labels."
         )
 
+    # Map class IDs to names
+    class_map = {rbc_id: 'RBC', wbc_id: 'WBC', pl_id: 'Platelet'}
+
     H, W = img_shape_hw
-    rbc_mask = np.zeros((H, W), dtype=bool)
-    wbc_mask = np.zeros((H, W), dtype=bool)
-    pl_mask = np.zeros((H, W), dtype=bool)
+    individual_cells = []
+    union_mask = np.zeros((H, W), dtype=bool)
 
     for i in range(n):
         cid = int(cls_ids[i])
-        m = _resize_mask_bool(masks_np[i], (H, W))
-        if cid == rbc_id:
-            rbc_mask |= m
-        elif cid == wbc_id:
-            wbc_mask |= m
-        elif cid == pl_id:
-            pl_mask |= m
+        if cid in class_map:
+            m = _resize_mask_bool(masks_np[i], (H, W))
+            individual_cells.append((m, class_map[cid]))
+            union_mask |= m
 
-    union = rbc_mask | wbc_mask | pl_mask
-    bg_mask = ~union  # Background = pixels that belong to no cell
+    bg_mask = ~union_mask  # Background = pixels that belong to no cell
 
-    return rbc_mask, wbc_mask, pl_mask, bg_mask
+    return individual_cells, bg_mask
 
 
 def render_overlay(
     img_rgb,
-    rbc_mask, wbc_mask, pl_mask, bg_mask,
+    individual_cells, bg_mask,
     show_rbc=True, show_wbc=True, show_platelet=True, show_bg=False,
     alpha=DEFAULT_ALPHA,
     draw_borders=True,
@@ -119,30 +119,35 @@ def render_overlay(
 ):
     """
     Render overlay on base image with alpha blending.
-    
+
     Args:
         img_rgb (numpy.ndarray): Base RGB image.
-        rbc_mask, wbc_mask, pl_mask, bg_mask (numpy.ndarray): Boolean masks for each cell type.
+        individual_cells (list): List of (mask, class_name) tuples for individual cells.
+        bg_mask (numpy.ndarray): Boolean mask for background pixels.
         show_rbc, show_wbc, show_platelet, show_bg (bool): Visibility toggles for each type.
         alpha (float): Alpha blending factor (0-1).
         draw_borders (bool): Whether to draw borders around cells.
         border_width (int): Border width in pixels.
         border_darken_factor (float): Factor to darken border colors.
-        
+
     Returns:
         tuple: (output_image, overlay_only) as numpy arrays.
-        
+
     Notes:
+        - Borders are drawn for each individual cell independently.
         - Borders are drawn in the same hue but darkened by border_darken_factor.
         - Border width is applied as an inner border.
-        - If masks overlap, later assignments override earlier ones (order: RBC -> WBC -> Platelet -> Background).
+        - If cell masks overlap, later cells override earlier ones in the overlay.
     """
     H, W = img_rgb.shape[:2]
     overlay = np.zeros((H, W, 3), dtype=np.uint8)
     comp_mask = np.zeros((H, W), dtype=bool)
 
-    # Helper to paint fill + optional border for one class
-    def _paint(mask_bool, base_color):
+    # Define visibility flags
+    show_flags = {'RBC': show_rbc, 'WBC': show_wbc, 'Platelet': show_platelet}
+
+    # Helper to paint fill + optional border for one individual cell
+    def _paint_cell(mask_bool, base_color):
         nonlocal overlay, comp_mask
         if not np.any(mask_bool):
             return
@@ -150,21 +155,20 @@ def render_overlay(
         overlay[mask_bool] = base_color
         comp_mask |= mask_bool
 
-        # Border (inner)
+        # Border (inner) - drawn for THIS individual cell
         if draw_borders and border_width > 0:
             border_mask = _make_border(mask_bool, border_width)
             if np.any(border_mask):
                 overlay[border_mask] = _darken(base_color, border_darken_factor)
                 comp_mask |= border_mask
 
-    if show_rbc:
-        _paint(rbc_mask, COLORS['RBC'])
-    if show_wbc:
-        _paint(wbc_mask, COLORS['WBC'])
-    if show_platelet:
-        _paint(pl_mask, COLORS['Platelet'])
+    # Process each individual cell
+    for cell_mask, class_name in individual_cells:
+        if show_flags.get(class_name, False):
+            _paint_cell(cell_mask, COLORS[class_name])
+
+    # Background has no border
     if show_bg:
-        # Background has no border
         overlay[bg_mask] = COLORS['Background']
         comp_mask |= bg_mask
 
@@ -179,43 +183,43 @@ def render_overlay(
     return out, overlay
 
 
-def create_overlay_image(img_rgb, detection, segmentation, 
+def create_overlay_image(img_rgb, detection, segmentation,
                         show_rbc=True, show_wbc=True, show_platelet=True, show_bg=False,
                         transparency=DEFAULT_ALPHA * 100):
     """
     Create overlay image from detection and segmentation results.
-    
+
     Args:
         img_rgb (numpy.ndarray): Base RGB image.
         detection: YOLO detection results.
         segmentation: SAM segmentation results.
         show_rbc, show_wbc, show_platelet, show_bg (bool): Visibility toggles.
         transparency (int): Transparency percentage (0-100).
-        
+
     Returns:
         numpy.ndarray: Overlay image as RGB array.
-        
+
     Raises:
         Exception: If overlay creation fails.
     """
     try:
         H, W = img_rgb.shape[:2]
         alpha = transparency / 100.0
-        
-        # Build masks for each cell type
-        rbc_mask, wbc_mask, pl_mask, bg_mask = build_class_masks(detection, segmentation, (H, W))
-        
+
+        # Build individual cell masks
+        individual_cells, bg_mask = build_class_masks(detection, segmentation, (H, W))
+
         # Render overlay
         overlay_img, _ = render_overlay(
             img_rgb,
-            rbc_mask, wbc_mask, pl_mask, bg_mask,
+            individual_cells, bg_mask,
             show_rbc=show_rbc,
             show_wbc=show_wbc,
             show_platelet=show_platelet,
             show_bg=show_bg,
             alpha=alpha
         )
-        
+
         return overlay_img
     except Exception as e:
         raise Exception(f"Overlay creation failed: {str(e)}")
