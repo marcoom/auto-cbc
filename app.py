@@ -16,7 +16,7 @@ from pathlib import Path
 from utils.detection import load_detection_model, detect_cells, get_detection_summary
 from utils.segmentation import load_segmentation_model, segment_cells, get_segmentation_summary
 from utils.metrics import count_cells, create_pie_chart
-from utils.visualization import create_overlay_image
+from utils.visualization import create_interactive_overlay
 from config import SUPPORTED_FORMATS, TRANSPARENCY_MIN, TRANSPARENCY_MAX, TRANSPARENCY_DEFAULT
 
 
@@ -227,15 +227,15 @@ def process_image(image_path, controls):
         with st.spinner("Counting cells..."):
             cell_counts = count_cells(detection)
         
-        # Create overlay
+        # Create interactive overlay
         with st.spinner("Creating visualization..."):
             # Load original image and ensure RGB format
             original_img = Image.open(image_path)
             if original_img.mode != 'RGB':
                 original_img = original_img.convert('RGB')
             img_array = np.array(original_img)
-            
-            overlay_img = create_overlay_image(
+
+            overlay_fig = create_interactive_overlay(
                 img_array,
                 detection,
                 segmentation,
@@ -245,21 +245,21 @@ def process_image(image_path, controls):
                 show_bg=controls['show_bg'],
                 transparency=controls['transparency']
             )
-        
-        return detection, segmentation, cell_counts, overlay_img
+
+        return detection, segmentation, cell_counts, overlay_fig
         
     except Exception as e:
         st.error(f"Processing failed: {str(e)}")
         return None
 
 
-def display_results(original_img, overlay_img, cell_counts, layout_mode="Horizontal"):
+def display_results(original_img, overlay_fig, cell_counts, layout_mode="Horizontal"):
     """
     Display processing results.
 
     Args:
         original_img (PIL.Image): Original image.
-        overlay_img (numpy.ndarray): Overlay image.
+        overlay_fig (plotly.graph_objects.Figure): Interactive overlay figure.
         cell_counts (dict): Cell count dictionary.
         layout_mode (str): Layout mode - "Horizontal" or "Vertical".
     """
@@ -267,25 +267,12 @@ def display_results(original_img, overlay_img, cell_counts, layout_mode="Horizon
     if layout_mode == "Horizontal":
         # Horizontal layout: Image on left, charts/metrics on right
 
-        # Custom CSS for horizontal layout - optimize image for column width
-        st.markdown("""
-            <style>
-            .stImage img {
-                max-height: 85vh;
-                width: 100%;
-                height: auto;
-                object-fit: contain;
-                display: block;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-
         # Create two columns: wider for image, narrower for results
         img_col, results_col = st.columns([2, 1], vertical_alignment='center')
 
-        # Display image in left column
+        # Display interactive overlay in left column
         with img_col:
-            st.image(overlay_img, width='stretch')
+            st.plotly_chart(overlay_fig)
 
         # Display results in right column
         with results_col:
@@ -312,21 +299,7 @@ def display_results(original_img, overlay_img, cell_counts, layout_mode="Horizon
     else:
         # Vertical layout: Image on top, charts/metrics below (original behavior)
 
-        # Custom CSS for vertical layout - centered with margins
-        st.markdown("""
-            <style>
-            .stImage img {
-                max-height: 80vh;
-                width: auto;
-                height: auto;
-                object-fit: contain;
-                display: block;
-                margin: 0 auto;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-
-        st.image(overlay_img, width='stretch')
+        st.plotly_chart(overlay_fig)
 
         # Display metrics
 
@@ -505,10 +478,10 @@ def main():
         # Display results if available and update overlay based on current controls
         if 'results' in st.session_state:
             results = st.session_state.results
-            
-            # Recreate overlay with current settings
+
+            # Recreate interactive overlay with current settings
             try:
-                current_overlay = create_overlay_image(
+                current_overlay_fig = create_interactive_overlay(
                     np.array(results['original_img']),
                     results['detection'],
                     results['segmentation'],
@@ -518,18 +491,27 @@ def main():
                     show_bg=controls['show_bg'],
                     transparency=controls['transparency']
                 )
-                
+
                 display_results(
                     results['original_img'],
-                    current_overlay,
+                    current_overlay_fig,
                     results['cell_counts'],
                     layout_mode=controls['layout']
                 )
             except Exception as e:
                 st.error(f"Failed to update overlay: {str(e)}")
+                # Create a simple figure with just the original image as fallback
+                import plotly.graph_objects as go
+                fallback_fig = go.Figure()
+                fallback_fig.add_trace(go.Image(z=np.array(results['original_img'])))
+                fallback_fig.update_layout(
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    xaxis=dict(visible=False),
+                    yaxis=dict(visible=False)
+                )
                 display_results(
                     results['original_img'],
-                    np.array(results['original_img']),  # Fallback to original
+                    fallback_fig,
                     results['cell_counts'],
                     layout_mode=controls['layout']
                 )
