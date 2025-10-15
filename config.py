@@ -28,7 +28,6 @@ COLORS = {
     'RBC': np.array([255, 150, 150], dtype=np.uint8),        # pastel red
     'WBC': np.array([255, 255, 150], dtype=np.uint8),        # yellow
     'Platelet': np.array([150, 180, 255], dtype=np.uint8),   # pastel blue
-    'Background': np.array([0, 0, 0], dtype=np.uint8),       # black
 }
 
 # Color scheme for pie chart (RGB format for plotly)

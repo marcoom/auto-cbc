@@ -132,7 +132,6 @@ def create_sidebar_controls():
     show_rbc = st.sidebar.checkbox("🔴 Red Blood Cells (RBC)", value=True)
     show_wbc = st.sidebar.checkbox("🟡 White Blood Cells (WBC)", value=True)
     show_platelet = st.sidebar.checkbox("🔵 Platelets", value=True)
-    show_bg = st.sidebar.checkbox("⚫ Background", value=False)
     
     # Detection parameters
     st.sidebar.subheader("⚙️ Detection Settings")
@@ -168,7 +167,6 @@ def create_sidebar_controls():
         'show_rbc': show_rbc,
         'show_wbc': show_wbc,
         'show_platelet': show_platelet,
-        'show_bg': show_bg,
         'confidence': confidence,
         'iou': iou
     }
@@ -242,7 +240,6 @@ def process_image(image_path, controls):
                 show_rbc=controls['show_rbc'],
                 show_wbc=controls['show_wbc'],
                 show_platelet=controls['show_platelet'],
-                show_bg=controls['show_bg'],
                 transparency=controls['transparency']
             )
 
@@ -488,7 +485,6 @@ def main():
                     show_rbc=controls['show_rbc'],
                     show_wbc=controls['show_wbc'],
                     show_platelet=controls['show_platelet'],
-                    show_bg=controls['show_bg'],
                     transparency=controls['transparency']
                 )
 

@@ -116,7 +116,7 @@ def build_class_masks(detection, segmentation, img_shape_hw):
 def render_overlay(
     img_rgb,
     individual_cells, bg_mask,
-    show_rbc=True, show_wbc=True, show_platelet=True, show_bg=False,
+    show_rbc=True, show_wbc=True, show_platelet=True,
     alpha=DEFAULT_ALPHA,
     draw_borders=True,
     border_width=DEFAULT_BORDER_WIDTH,
@@ -129,7 +129,7 @@ def render_overlay(
         img_rgb (numpy.ndarray): Base RGB image.
         individual_cells (list): List of (mask, class_name) tuples for individual cells.
         bg_mask (numpy.ndarray): Boolean mask for background pixels.
-        show_rbc, show_wbc, show_platelet, show_bg (bool): Visibility toggles for each type.
+        show_rbc, show_wbc, show_platelet (bool): Visibility toggles for each type.
         alpha (float): Alpha blending factor (0-1).
         draw_borders (bool): Whether to draw borders around cells.
         border_width (int): Border width in pixels.
@@ -178,11 +178,6 @@ def render_overlay(
         if show_flags.get(class_name, False):
             _paint_cell(cell_mask, COLORS[class_name])
 
-    # Background has no border
-    if show_bg:
-        overlay[bg_mask] = COLORS['Background']
-        comp_mask |= bg_mask
-
     # Alpha blend only where overlay is present
     out = img_rgb.copy().astype(np.float32)
     overlay_f = overlay.astype(np.float32)
@@ -195,7 +190,7 @@ def render_overlay(
 
 
 def create_overlay_image(img_rgb, detection, segmentation,
-                        show_rbc=True, show_wbc=True, show_platelet=True, show_bg=False,
+                        show_rbc=True, show_wbc=True, show_platelet=True,
                         transparency=DEFAULT_ALPHA * 100):
     """
     Create overlay image from detection and segmentation results.
@@ -204,7 +199,7 @@ def create_overlay_image(img_rgb, detection, segmentation,
         img_rgb (numpy.ndarray): Base RGB image.
         detection: YOLO detection results.
         segmentation: SAM segmentation results.
-        show_rbc, show_wbc, show_platelet, show_bg (bool): Visibility toggles.
+        show_rbc, show_wbc, show_platelet (bool): Visibility toggles.
         transparency (int): Transparency percentage (0-100).
 
     Returns:
@@ -227,7 +222,6 @@ def create_overlay_image(img_rgb, detection, segmentation,
             show_rbc=show_rbc,
             show_wbc=show_wbc,
             show_platelet=show_platelet,
-            show_bg=show_bg,
             alpha=alpha
         )
 
@@ -237,7 +231,7 @@ def create_overlay_image(img_rgb, detection, segmentation,
 
 
 def create_interactive_overlay(img_rgb, detection, segmentation,
-                               show_rbc=True, show_wbc=True, show_platelet=True, show_bg=False,
+                               show_rbc=True, show_wbc=True, show_platelet=True,
                                transparency=DEFAULT_ALPHA * 100):
     """
     Create interactive Plotly overlay figure from detection and segmentation results.
@@ -246,7 +240,7 @@ def create_interactive_overlay(img_rgb, detection, segmentation,
         img_rgb (numpy.ndarray): Base RGB image.
         detection: YOLO detection results.
         segmentation: SAM segmentation results.
-        show_rbc, show_wbc, show_platelet, show_bg (bool): Visibility toggles.
+        show_rbc, show_wbc, show_platelet (bool): Visibility toggles.
         transparency (int): Transparency percentage (0-100).
 
     Returns:
