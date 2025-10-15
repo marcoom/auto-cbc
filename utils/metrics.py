@@ -76,7 +76,7 @@ def create_pie_chart(cell_counts):
         df_counts,
         values='Count',
         names='Cell Type',
-        title='Percentage and Count of Detected Cell Types',
+        title='Percentage of Detected Cell Types',
         color='Cell Type',
         color_discrete_map=PIE_CHART_COLORS,
         hover_data=['Count'],
@@ -86,7 +86,7 @@ def create_pie_chart(cell_counts):
     # Update traces to show text inside and customize appearance
     fig.update_traces(
         textposition='inside',
-        textinfo='percent+label+value',  # Show percentage, label, and count
+        textinfo='percent+label',  # Show only percentage and label, count on hover
         hovertemplate='<b>%{label}</b>: %{value} (%{percent})<extra></extra>'
     )
 

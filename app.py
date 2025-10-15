@@ -38,7 +38,7 @@ def get_example_images():
     return sorted(image_files)
 
 
-def create_thumbnail(image_path, size=(150, 150)):
+def create_thumbnail(image_path, size=(250, 250)):
     """
     Create thumbnail for image display.
     
@@ -253,52 +253,30 @@ def display_results(original_img, overlay_img, cell_counts):
         overlay_img (numpy.ndarray): Overlay image.
         cell_counts (dict): Cell count dictionary.
     """
-    # Create two columns for side-by-side display
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Original Image")
-        st.image(original_img, use_column_width=True)
-    
-    with col2:
-        st.subheader("Cell Detection & Segmentation")
-        st.image(overlay_img, use_column_width=True)
+
+    st.subheader("Cell Detection & Segmentation")
+    st.image(overlay_img, width='stretch')
     
     # Display metrics
     st.subheader("📊 Cell Count Results")
     
-    # Create metrics columns
-    metrics_cols = st.columns(len(cell_counts) + 1)
+    # Create two columns: pie chart and metrics
+    chart_col, metrics_col = st.columns([1, 1])
     
-    # Individual cell counts
-    for i, (cell_type, count) in enumerate(cell_counts.items()):
-        with metrics_cols[i]:
+    # Pie chart in left column
+    with chart_col:
+        if cell_counts and sum(cell_counts.values()) > 0:
+            fig = create_pie_chart(cell_counts)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    # Metrics in right column (stacked vertically)
+    with metrics_col:
+        # Individual cell counts
+        for cell_type, count in cell_counts.items():
             st.metric(label=cell_type, value=count)
-    
-    # Total count
-    with metrics_cols[-1]:
-        st.metric(label="Total Cells", value=sum(cell_counts.values()))
-    
-    # Pie chart
-    if cell_counts and sum(cell_counts.values()) > 0:
-        st.subheader("📈 Cell Distribution")
-        fig = create_pie_chart(cell_counts)
-        st.plotly_chart(fig, use_container_width=True)
         
-        # Display percentages
-        metrics_summary = get_metrics_summary(cell_counts)
-        if metrics_summary['has_cells']:
-            st.subheader("📋 Detailed Statistics")
-            
-            stats_data = []
-            for cell_type in cell_counts.keys():
-                stats_data.append({
-                    "Cell Type": cell_type,
-                    "Count": metrics_summary['counts'][cell_type],
-                    "Percentage": f"{metrics_summary['percentages'][cell_type]:.1f}%"
-                })
-            
-            st.table(stats_data)
+        # Total count
+        st.metric(label="Total Cells", value=sum(cell_counts.values()))
 
 
 def main():
@@ -356,14 +334,22 @@ def main():
                         cols = st.columns(len(row))
                         for i, img_path in enumerate(row):
                             with cols[i]:
-                                # Create thumbnail
-                                thumbnail = create_thumbnail(img_path)
-                                if thumbnail:
-                                    st.image(thumbnail, caption=img_path.name, use_container_width=True)
-                                    if st.button(f"Select", key=f"select_{img_path.name}"):
-                                        # Store selected image in session state
-                                        st.session_state.selected_example_image = str(img_path)
-                                        st.rerun()
+                                # Check if this image is currently selected
+                                is_selected = (
+                                    'selected_example_image' in st.session_state and 
+                                    st.session_state.selected_example_image == str(img_path)
+                                )
+                                
+                                # Create container with border if selected
+                                with st.container(border=is_selected, horizontal_alignment="center"):
+                                    # Create thumbnail
+                                    thumbnail = create_thumbnail(img_path)
+                                    if thumbnail:
+                                        st.image(thumbnail, width='content')
+                                        if st.button(f"Select", key=f"select_{img_path.name}"):
+                                            # Store selected image in session state
+                                            st.session_state.selected_example_image = str(img_path)
+                                            st.rerun()
         
         # Check if an example image was selected
         if uploaded_file is None and 'selected_example_image' in st.session_state:
@@ -383,7 +369,6 @@ def main():
                     return self._content
             
             uploaded_file = MockUploadedFile(Path(selected_image_path).name, img_bytes)
-            st.success(f"Selected example image: {Path(selected_image_path).name}")
             
             # Add a button to clear selection
             if st.button("🗑️ Clear Selection"):
@@ -411,7 +396,7 @@ def main():
             if original_img.mode != 'RGB':
                 original_img = original_img.convert('RGB')
             
-            st.success(f"Image uploaded successfully! Size: {original_img.size}")
+            st.success(f"Image uploaded successfully!")
             
             # Process button
             if st.button("🚀 Analyze Blood Cells", type="primary"):
@@ -466,12 +451,12 @@ def main():
                 os.unlink(temp_path)
     
     # Footer
-    st.markdown("---")
-    st.markdown("""
-    **AutoCBC** - Automated Blood Cell Counter  
-    Built with ❤️ using Streamlit, YOLO, and SAM2  
-    License: AGPL-3.0 | © 2025 Marco Mongi
-    """)
+    #st.markdown("---")
+    #st.markdown("""
+    #**AutoCBC** - Automated Blood Cell Counter  
+    #Built using Streamlit, YOLO, and SAM2  
+    #License: AGPL-3.0 | © 2025 Marco Mongi
+    #""")
 
 
 if __name__ == "__main__":
