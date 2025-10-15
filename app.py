@@ -301,154 +301,163 @@ def main():
     # Create sidebar controls
     controls = create_sidebar_controls()
     
-    # File upload section
-    st.subheader("📤 Upload Image")
-    
-    # Choose input method
-    input_method = st.radio(
-        "Choose input method:",
-        ["📁 Upload File", "📷 Take Photo"],
-        horizontal=True
-    )
-    
-    uploaded_file = None
-    
-    if input_method == "📁 Upload File":
-        uploaded_file = st.file_uploader(
-            "Choose an image file",
-            type=SUPPORTED_FORMATS,
-            help=f"Supported formats: {', '.join([fmt.upper() for fmt in SUPPORTED_FORMATS])}"
+    # Input Section with expandable container
+    with st.expander("📤 Input & Analysis", expanded=not st.session_state.get('show_results', False)):
+        # File upload section
+        st.subheader("📤 Upload Image")
+        
+        # Choose input method
+        input_method = st.radio(
+            "Choose input method:",
+            ["📁 Upload File", "📷 Take Photo"],
+            horizontal=True
         )
         
-        # Show example images gallery below the file uploader
-        if uploaded_file is None:  # Only show examples if no file is uploaded
-            example_images = get_example_images()
-            
-            if example_images:
-                with st.expander("📋 Or Select an Example Image", expanded=False):
-                    # Create columns for thumbnail display
-                    cols_per_row = 4
-                    rows = [example_images[i:i + cols_per_row] for i in range(0, len(example_images), cols_per_row)]
-                    
-                    for row in rows:
-                        cols = st.columns(len(row))
-                        for i, img_path in enumerate(row):
-                            with cols[i]:
-                                # Check if this image is currently selected
-                                is_selected = (
-                                    'selected_example_image' in st.session_state and 
-                                    st.session_state.selected_example_image == str(img_path)
-                                )
-                                
-                                # Create container with border if selected
-                                with st.container(border=is_selected, horizontal_alignment="center"):
-                                    # Create thumbnail
-                                    thumbnail = create_thumbnail(img_path)
-                                    if thumbnail:
-                                        st.image(thumbnail, width='content')
-                                        if st.button(f"Select", key=f"select_{img_path.name}"):
-                                            # Store selected image in session state
-                                            st.session_state.selected_example_image = str(img_path)
-                                            st.rerun()
+        uploaded_file = None
         
-        # Check if an example image was selected
-        if uploaded_file is None and 'selected_example_image' in st.session_state:
-            selected_image_path = st.session_state.selected_example_image
+        if input_method == "📁 Upload File":
+            uploaded_file = st.file_uploader(
+                "Choose an image file",
+                type=SUPPORTED_FORMATS,
+                help=f"Supported formats: {', '.join([fmt.upper() for fmt in SUPPORTED_FORMATS])}"
+            )
             
-            # Read the selected image and convert it to a format similar to uploaded file
-            with open(selected_image_path, 'rb') as f:
-                img_bytes = f.read()
-            
-            # Create a mock uploaded file object
-            class MockUploadedFile:
-                def __init__(self, name, content):
-                    self.name = name
-                    self._content = content
+            # Show example images gallery below the file uploader
+            if uploaded_file is None:  # Only show examples if no file is uploaded
+                example_images = get_example_images()
                 
-                def getvalue(self):
-                    return self._content
+                if example_images:
+                    with st.expander("📋 Or Select an Example Image", expanded=False):
+                        # Create columns for thumbnail display
+                        cols_per_row = 4
+                        rows = [example_images[i:i + cols_per_row] for i in range(0, len(example_images), cols_per_row)]
+                        
+                        for row in rows:
+                            cols = st.columns(len(row))
+                            for i, img_path in enumerate(row):
+                                with cols[i]:
+                                    # Check if this image is currently selected
+                                    is_selected = (
+                                        'selected_example_image' in st.session_state and 
+                                        st.session_state.selected_example_image == str(img_path)
+                                    )
+                                    
+                                    # Create container with border if selected
+                                    with st.container(border=is_selected, horizontal_alignment="center"):
+                                        # Create thumbnail
+                                        thumbnail = create_thumbnail(img_path)
+                                        if thumbnail:
+                                            st.image(thumbnail, width='content')
+                                            if st.button(f"Select", key=f"select_{img_path.name}"):
+                                                # Store selected image in session state
+                                                st.session_state.selected_example_image = str(img_path)
+                                                st.rerun()
             
-            uploaded_file = MockUploadedFile(Path(selected_image_path).name, img_bytes)
+            # Check if an example image was selected
+            if uploaded_file is None and 'selected_example_image' in st.session_state:
+                selected_image_path = st.session_state.selected_example_image
+                
+                # Read the selected image and convert it to a format similar to uploaded file
+                with open(selected_image_path, 'rb') as f:
+                    img_bytes = f.read()
+                
+                # Create a mock uploaded file object
+                class MockUploadedFile:
+                    def __init__(self, name, content):
+                        self.name = name
+                        self._content = content
+                    
+                    def getvalue(self):
+                        return self._content
+                
+                uploaded_file = MockUploadedFile(Path(selected_image_path).name, img_bytes)
+                
+                # Add a button to clear selection
+                if st.button("🗑️ Clear Selection"):
+                    del st.session_state.selected_example_image
+                    st.rerun()
+        
+        elif input_method == "📷 Take Photo":
+            camera_image = st.camera_input("Take a photo")
+            if camera_image is not None:
+                uploaded_file = camera_image
+        
+        # Process uploaded image
+        if uploaded_file is not None:
+            # Validate format
+            if not validate_image_format(uploaded_file):
+                st.error(f"Unsupported file format. Please use: {', '.join([fmt.upper() for fmt in SUPPORTED_FORMATS])}")
+                st.stop()
             
-            # Add a button to clear selection
-            if st.button("🗑️ Clear Selection"):
-                del st.session_state.selected_example_image
-                st.rerun()
+            # Save to temporary file
+            temp_path = save_uploaded_file(uploaded_file)
+            
+            try:
+                # Load and display original image, ensure RGB format
+                original_img = Image.open(temp_path)
+                if original_img.mode != 'RGB':
+                    original_img = original_img.convert('RGB')
+                
+                st.success(f"Image uploaded successfully!")
+                
+                # Process button
+                if st.button("🚀 Analyze Blood Cells", type="primary"):
+                    # Process image
+                    results = process_image(temp_path, controls)
+                    
+                    if results is not None:
+                        detection, segmentation, cell_counts, _ = results
+                        
+                        # Store results in session state for real-time updates
+                        st.session_state.results = {
+                            'original_img': original_img,
+                            'detection': detection,
+                            'segmentation': segmentation,
+                            'cell_counts': cell_counts,
+                            'temp_path': temp_path
+                        }
+                        # Enable results expansion after processing
+                        st.session_state.show_results = True
+                        st.rerun()
+            
+            finally:
+                # Clean up temporary file
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
     
-    elif input_method == "📷 Take Photo":
-        camera_image = st.camera_input("Take a photo")
-        if camera_image is not None:
-            uploaded_file = camera_image
-    
-    # Process uploaded image
-    if uploaded_file is not None:
-        # Validate format
-        if not validate_image_format(uploaded_file):
-            st.error(f"Unsupported file format. Please use: {', '.join([fmt.upper() for fmt in SUPPORTED_FORMATS])}")
-            st.stop()
-        
-        # Save to temporary file
-        temp_path = save_uploaded_file(uploaded_file)
-        
-        try:
-            # Load and display original image, ensure RGB format
-            original_img = Image.open(temp_path)
-            if original_img.mode != 'RGB':
-                original_img = original_img.convert('RGB')
+    # Results Section with expandable container
+    with st.expander("📊 Results", expanded=st.session_state.get('show_results', False)):
+        # Display results if available and update overlay based on current controls
+        if 'results' in st.session_state:
+            results = st.session_state.results
             
-            st.success(f"Image uploaded successfully!")
-            
-            # Process button
-            if st.button("🚀 Analyze Blood Cells", type="primary"):
-                # Process image
-                results = process_image(temp_path, controls)
+            # Recreate overlay with current settings
+            try:
+                current_overlay = create_overlay_image(
+                    np.array(results['original_img']),
+                    results['detection'],
+                    results['segmentation'],
+                    show_rbc=controls['show_rbc'],
+                    show_wbc=controls['show_wbc'],
+                    show_platelet=controls['show_platelet'],
+                    show_bg=controls['show_bg'],
+                    transparency=controls['transparency']
+                )
                 
-                if results is not None:
-                    detection, segmentation, cell_counts, _ = results
-                    
-                    # Store results in session state for real-time updates
-                    st.session_state.results = {
-                        'original_img': original_img,
-                        'detection': detection,
-                        'segmentation': segmentation,
-                        'cell_counts': cell_counts,
-                        'temp_path': temp_path
-                    }
-            
-            # Display results if available and update overlay based on current controls
-            if 'results' in st.session_state:
-                results = st.session_state.results
-                
-                # Recreate overlay with current settings
-                try:
-                    current_overlay = create_overlay_image(
-                        np.array(results['original_img']),
-                        results['detection'],
-                        results['segmentation'],
-                        show_rbc=controls['show_rbc'],
-                        show_wbc=controls['show_wbc'],
-                        show_platelet=controls['show_platelet'],
-                        show_bg=controls['show_bg'],
-                        transparency=controls['transparency']
-                    )
-                    
-                    display_results(
-                        results['original_img'],
-                        current_overlay,
-                        results['cell_counts']
-                    )
-                except Exception as e:
-                    st.error(f"Failed to update overlay: {str(e)}")
-                    display_results(
-                        results['original_img'],
-                        np.array(results['original_img']),  # Fallback to original
-                        results['cell_counts']
-                    )
-        
-        finally:
-            # Clean up temporary file
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
+                display_results(
+                    results['original_img'],
+                    current_overlay,
+                    results['cell_counts']
+                )
+            except Exception as e:
+                st.error(f"Failed to update overlay: {str(e)}")
+                display_results(
+                    results['original_img'],
+                    np.array(results['original_img']),  # Fallback to original
+                    results['cell_counts']
+                )
+        else:
+            st.info("Process an image above to see results here.")
     
     # Footer
     #st.markdown("---")
