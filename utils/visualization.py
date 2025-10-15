@@ -345,8 +345,7 @@ def create_interactive_overlay(img_rgb, detection, segmentation,
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             hovermode='closest',
-            width=W,
-            height=H
+            autosize=True
         )
 
         return fig

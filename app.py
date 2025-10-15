@@ -272,7 +272,7 @@ def display_results(original_img, overlay_fig, cell_counts, layout_mode="Horizon
 
         # Display interactive overlay in left column
         with img_col:
-            st.plotly_chart(overlay_fig)
+            st.plotly_chart(overlay_fig, use_container_width=True, key="overlay_horizontal")
 
         # Display results in right column
         with results_col:
@@ -299,7 +299,7 @@ def display_results(original_img, overlay_fig, cell_counts, layout_mode="Horizon
     else:
         # Vertical layout: Image on top, charts/metrics below (original behavior)
 
-        st.plotly_chart(overlay_fig)
+        st.plotly_chart(overlay_fig, use_container_width=True, key="overlay_vertical")
 
         # Display metrics
 
