@@ -4,6 +4,34 @@
 # AutoCBC
 Automated Blood Cell Counting using AI — A Streamlit-based application that analyzes blood smear images to detect, count, and segment red blood cells, white blood cells, and platelets using YOLO and SAM models.
 
+## Installation
+
+### Prerequisites
+
+- Python 3.12.3
+- NVIDIA GPU with CUDA support (optional, but recommended for faster training)
+
+### Steps
+
+1. **Clone the Repository**
+
+     ```bash
+   git clone https://github.com/marcoom/auto-cbc.git
+   cd auto-cbc
+   ```
+
+2. **Create a Virtual Environment**
+
+     ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+3. **Install Dependencies**
+
+     ```bash
+   pip install -r requirements.txt
+   ```
 
 ## Licenses
 
