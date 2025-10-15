@@ -15,7 +15,7 @@ from pathlib import Path
 # Import utility modules
 from utils.detection import load_detection_model, detect_cells, get_detection_summary
 from utils.segmentation import load_segmentation_model, segment_cells, get_segmentation_summary
-from utils.metrics import count_cells, create_pie_chart, get_metrics_summary
+from utils.metrics import count_cells, create_pie_chart
 from utils.visualization import create_overlay_image
 from config import SUPPORTED_FORMATS, TRANSPARENCY_MIN, TRANSPARENCY_MAX, TRANSPARENCY_DEFAULT
 
@@ -111,12 +111,12 @@ def save_uploaded_file(uploaded_file):
 def create_sidebar_controls():
     """
     Create sidebar controls for visualization settings.
-    
+
     Returns:
         dict: Dictionary containing all control values.
     """
     st.sidebar.header("🎛️ Visualization Controls")
-    
+
     # Transparency slider
     transparency = st.sidebar.slider(
         "Overlay Transparency (%)",
@@ -153,8 +153,17 @@ def create_sidebar_controls():
         step=0.1,
         help="Intersection over Union threshold for non-maximum suppression"
     )
-    
+
+    # Layout selection
+    layout = st.sidebar.selectbox(
+        "Choose layout:",
+        ["Horizontal", "Vertical"],
+        index=0,
+        help="Horizontal: Image and results side-by-side (optimal for wide screens)\nVertical: Image on top, results below"
+    )
+
     return {
+        'layout': layout,
         'transparency': transparency,
         'show_rbc': show_rbc,
         'show_wbc': show_wbc,
@@ -244,54 +253,105 @@ def process_image(image_path, controls):
         return None
 
 
-def display_results(original_img, overlay_img, cell_counts):
+def display_results(original_img, overlay_img, cell_counts, layout_mode="Horizontal"):
     """
     Display processing results.
-    
+
     Args:
         original_img (PIL.Image): Original image.
         overlay_img (numpy.ndarray): Overlay image.
         cell_counts (dict): Cell count dictionary.
+        layout_mode (str): Layout mode - "Horizontal" or "Vertical".
     """
 
-    st.subheader("Cell Detection & Segmentation")
+    if layout_mode == "Horizontal":
+        # Horizontal layout: Image on left, charts/metrics on right
 
-    # Custom CSS to ensure image fits viewport on both vertical and horizontal screens
-    st.markdown("""
-        <style>
-        .stImage img {
-            max-height: 80vh;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            display: block;
-            margin: 0 auto;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+        # Custom CSS for horizontal layout - optimize image for column width
+        st.markdown("""
+            <style>
+            .stImage img {
+                max-height: 85vh;
+                width: 100%;
+                height: auto;
+                object-fit: contain;
+                display: block;
+            }
+            </style>
+        """, unsafe_allow_html=True)
 
-    st.image(overlay_img, width='stretch')
-    
-    # Display metrics
-    st.subheader("📊 Cell Count Results")
-    
-    # Create two columns: pie chart and metrics
-    chart_col, metrics_col = st.columns([1, 1])
-    
-    # Pie chart in left column
-    with chart_col:
-        if cell_counts and sum(cell_counts.values()) > 0:
-            fig = create_pie_chart(cell_counts)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    # Metrics in right column (stacked vertically)
-    with metrics_col:
-        # Individual cell counts
-        for cell_type, count in cell_counts.items():
-            st.metric(label=cell_type, value=count)
-        
-        # Total count
-        st.metric(label="Total Cells", value=sum(cell_counts.values()))
+        # Create two columns: wider for image, narrower for results
+        img_col, results_col = st.columns([2, 1], vertical_alignment='center')
+
+        # Display image in left column
+        with img_col:
+            st.image(overlay_img, width='stretch')
+
+        # Display results in right column
+        with results_col:
+
+            # Pie chart
+            if cell_counts and sum(cell_counts.values()) > 0:
+                fig = create_pie_chart(cell_counts)
+                st.plotly_chart(fig)
+
+            # Metrics in a single row (one column per cell type)
+            st.markdown("**Cell Counts:**")
+            num_metrics = len(cell_counts) + 1  # +1 for total
+            metric_cols = st.columns(num_metrics)
+
+            # Display each cell type count in its own column
+            for idx, (cell_type, count) in enumerate(cell_counts.items()):
+                with metric_cols[idx]:
+                    st.metric(label=cell_type, value=count)
+
+            # Total count in last column
+            with metric_cols[-1]:
+                st.metric(label="Total Cells", value=sum(cell_counts.values()))
+
+    else:
+        # Vertical layout: Image on top, charts/metrics below (original behavior)
+
+        # Custom CSS for vertical layout - centered with margins
+        st.markdown("""
+            <style>
+            .stImage img {
+                max-height: 80vh;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+                display: block;
+                margin: 0 auto;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        st.image(overlay_img, width='stretch')
+
+        # Display metrics
+
+        # Create two columns: pie chart and metrics
+        chart_col, metrics_col = st.columns([1, 1], vertical_alignment='center')
+
+        # Pie chart in left column
+        with chart_col:
+            if cell_counts and sum(cell_counts.values()) > 0:
+                fig = create_pie_chart(cell_counts)
+                st.plotly_chart(fig)
+
+        # Metrics in right column (one row per cell type)
+        with metrics_col:
+            st.markdown("**Cell Counts:**")
+            # Display each cell type count in its own row
+            for cell_type, count in cell_counts.items():
+                cols = st.columns(1)
+                with cols[0]:
+                    st.metric(label=cell_type, value=count)
+
+            # Total count in its own row
+            cols = st.columns(1)
+            with cols[0]:
+                st.metric(label="Total Cells", value=sum(cell_counts.values()))
 
 
 def main():
@@ -462,14 +522,16 @@ def main():
                 display_results(
                     results['original_img'],
                     current_overlay,
-                    results['cell_counts']
+                    results['cell_counts'],
+                    layout_mode=controls['layout']
                 )
             except Exception as e:
                 st.error(f"Failed to update overlay: {str(e)}")
                 display_results(
                     results['original_img'],
                     np.array(results['original_img']),  # Fallback to original
-                    results['cell_counts']
+                    results['cell_counts'],
+                    layout_mode=controls['layout']
                 )
         else:
             st.info("Process an image above to see results here.")

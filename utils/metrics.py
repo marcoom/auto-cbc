@@ -76,11 +76,20 @@ def create_pie_chart(cell_counts):
         df_counts,
         values='Count',
         names='Cell Type',
-        title='Percentage of Detected Cell Types',
         color='Cell Type',
         color_discrete_map=PIE_CHART_COLORS,
         hover_data=['Count'],
         labels={'Count': 'Count'}
+    )
+
+    fig.update_layout(
+        title={
+            'text': "Percentage of Detected Cell Types",
+            'y':1,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        }
     )
 
     # Update traces to show text inside and customize appearance
@@ -91,6 +100,12 @@ def create_pie_chart(cell_counts):
     )
 
     fig.update_layout(showlegend=False)
+
+    fig.update_layout(
+        font=dict(
+            size=20
+        )
+    )
 
     return fig
 
