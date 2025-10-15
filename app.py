@@ -255,6 +255,21 @@ def display_results(original_img, overlay_img, cell_counts):
     """
 
     st.subheader("Cell Detection & Segmentation")
+
+    # Custom CSS to ensure image fits viewport on both vertical and horizontal screens
+    st.markdown("""
+        <style>
+        .stImage img {
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.image(overlay_img, width='stretch')
     
     # Display metrics
