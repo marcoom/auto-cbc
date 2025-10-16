@@ -9,7 +9,7 @@ Automated Blood Cell Counting using AI — A Streamlit-based application that an
 ### Prerequisites
 
 - Python 3.12.3
-- NVIDIA GPU with CUDA support (optional, but recommended for faster training)
+- NVIDIA GPU with CUDA support (optional, but recommended)
 
 ### Steps
 
@@ -32,6 +32,37 @@ Automated Blood Cell Counting using AI — A Streamlit-based application that an
      ```bash
    pip install -r requirements.txt
    ```
+
+## Docker
+
+### Using Pre-built Image from Docker Hub
+
+The easiest way to run AutoCBC is using the pre-built Docker image:
+
+```bash
+docker pull marcoom/auto-cbc:latest
+docker run -p 8501:8501 marcoom/auto-cbc:latest
+```
+
+Then open your browser and navigate to `http://localhost:8501`
+
+### Building the Image Locally
+
+To build the Docker image from source:
+
+```bash
+docker build -t auto-cbc .
+```
+
+### Running the Container
+
+After building locally, run the container:
+
+```bash
+docker run -p 8501:8501 auto-cbc
+```
+
+The application will be available at `http://localhost:8501`
 
 ## Licenses
 

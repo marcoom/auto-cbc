@@ -1,0 +1,48 @@
+# Documentation folder
+docs/
+
+# SAM model files
+models/sam*
+
+# Notebooks
+notebooks/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE and editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Claude Code
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing and CI
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
