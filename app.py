@@ -517,9 +517,7 @@ def main():
     # Footer
     st.markdown("---")
     st.markdown("""
-    **AutoCBC** - Automated Blood Cell Counter  
-    Built using Streamlit, YOLO, and SAM2  
-    License: AGPL-3.0 | © 2025 Marco Mongi
+    **AutoCBC** | License: AGPL-3.0 | © 2025 Marco Mongi | Source code at https://github.com/marcoom/auto-cbc/
     """)
 
 
